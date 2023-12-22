@@ -1,9 +1,9 @@
 # home-assistant-modbus-home-battery-blauhoff
 ## Let home assistant control your all in one home battery via modbus and esphome.
 
-This yaml can be used to control Blauhoff all in one BMS systems, Ecactus and probably Copia will work as well (not tested)
-The mean purpose is to make the BMS (battery management system) available in Home Assistant to make automated charge/discharge possible. 
-use at your own risk.
+This yaml can be used to control Blauhoff all in one BMS systems. Probably Ecactus all in one and Copia systems will work as well (not tested)
+The main purpose is to make the BMS (battery management system) available in Home Assistant to make automated charge/discharge possible. 
+Use at your own risk.
  
 # configuration: 
 * Make sure that your wifi credentials are set and asign a ip address,gateway and subnetmask in the code below.
