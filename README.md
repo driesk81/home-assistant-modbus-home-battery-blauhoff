@@ -24,8 +24,8 @@ use at your own risk.
   * Power Flow Card
 
 # setup 
-Flash ESPHome to ESP32
-Edit yaml on ESP32
+  * Flash ESPHome to ESP32
+  * Edit yaml on ESP32
  
  # Hardware setup
  
