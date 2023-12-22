@@ -37,6 +37,20 @@ use at your own risk.
  ![image](https://github.com/driesk81/home-assistant-modbus-home-battery-ecactus/assets/55897352/095d6154-8d5e-41a0-9567-0aa620a13c8f)
  ![image](https://github.com/driesk81/home-assistant-modbus-home-battery-ecactus/assets/55897352/66d4971d-150e-4464-8f51-d36f7d1ae5d8)
 
+# lovelace setup
+
+```
+ type: custom:power-flow-card
+watt_threshold: 1000
+entities:
+  battery: sensor.yoursensorname_dsp_power
+  battery_charge: sensor.yoursensorname_esp_v2_soc
+  grid: sensor.yoursensorname_grid_power
+  solar: sensor.yoursnesorname_pv_power
+```
+
+
+
 
 
  
