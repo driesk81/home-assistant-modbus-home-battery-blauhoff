@@ -1,4 +1,4 @@
-# home-assistant-modbus-home-battery-ecactus
+# home-assistant-modbus-home-battery-blauhoff
 ## Let home assistant control your all in one home battery via modbus and esphome.
 
 This yaml can be used to control Blauhoff all in one BMS systems, Ecactus and probably Copia will work as well (not tested)
