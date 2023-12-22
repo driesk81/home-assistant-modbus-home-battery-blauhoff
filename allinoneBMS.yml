@@ -1,5 +1,5 @@
 # this yaml can be used to control Blauhoff all in one BMS systems. Probably Ecactus all in one and Copia systems will work as well (not tested)
-# the mean purpose is to make the BMS (battery management system) available in Home Assistant to make automated charge/discharge possible. 
+# the main purpose is to make the BMS (battery management system) available in Home Assistant to make automated charge/discharge possible. 
 # use at your own risk
 # configuration: make sure that your wifi credentials are set and asign a ip address,gateway and subnetmask in the code below
 # this code is tested on a esp32 connected to a TTL to RS485 converter 
