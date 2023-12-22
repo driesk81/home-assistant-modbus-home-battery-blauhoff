@@ -1,7 +1,7 @@
 # home-assistant-modbus-home-battery-ecactus
 ## Let home assistant control your all in one home battery via modbus and esphome.
 
-This yaml can be used to control Ecactus and Blauhoff all in one BMS systems and probably copia as well (not tested)
+This yaml can be used to control Blauhoff all in one BMS systems, Ecactus and probably Copia will work as well (not tested)
 The mean purpose is to make the BMS (battery management system) available in Home Assistant to make automated charge/discharge possible. 
 use at your own risk.
  
@@ -12,16 +12,18 @@ use at your own risk.
 * Known issue:  Component modbus_controller took a long time for an operation (0.05 s) and Components should block for at most 20-30ms i seen no effect or solution.
 * Please be kind this is the first yaml i have ever written :-)
 
-hardware used:
+# hardware used:
+   * Blauhoff all in one BMS
    * ESP32
    * TTL to RS485 converter
    * some wire
 
-setup home assistant with: 
+# setup home assistant with: 
   * HACS
   * ESPHome
   * Power Flow Card
 
+# setup 
 Flash ESPHome to ESP32
 Edit yaml on ESP32
  
