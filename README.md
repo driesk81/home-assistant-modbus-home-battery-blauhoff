@@ -5,10 +5,10 @@ This yaml can be used to control Blauhoff all in one BMS systems. Probably Ecact
 The main purpose is to make the BMS (battery management system) available in Home Assistant to make automated charge/discharge possible. 
 Use at your own risk.
  
-# configuration: 
-* Make sure that your wifi credentials are set and asign a ip address,gateway and subnetmask in the code below.
-* This code is tested on a esp32 connected to a TTL to RS485 converter. 
-* BMS settings can be selected via list options and are pushed when [change modus] button is pressed.
+# explanation: 
+* Make sure that your wifi credentials are set and asign a ip address,gateway and subnetmask in the yaml.
+* The yaml is tested on a esp32 connected to a TTL to RS485 converter. 
+* BMS settings can be selected in home assistant via list options and are pushed when [change modus] button is pressed.
 * Known issue:  Component modbus_controller took a long time for an operation (0.05 s) and Components should block for at most 20-30ms i seen no effect or solution.
 * Please be kind this is the first yaml i have ever written :-)
 
