@@ -1,0 +1,591 @@
+# this yaml can be used to control ecactus all in one BMS system and probably copia as well (not tested)
+# the mean purpose is to make the BMS (battery management system) available in Home Assistant to make automated charge/discharge possible. 
+# use at your own risk
+# configuration: make sure that your wifi credentials are set and asign a ip address,gateway and subnetmask in the code below
+# this code is tested on a esp32 connected to a TTL to RS485 converter 
+# BMS settings can be selected via list options and are pushed when [change modus] button is pressed
+# known issue:  Component modbus_controller took a long time for an operation (0.05 s) and Components should block for at most 20-30ms i seen no effect or solution
+# Please be kind this is the first yaml i have ever written :-)
+
+esphome:
+  name: "all_in_one_bms"
+  friendly_name: all in one BMS 
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+
+# Enable logging
+logger:
+ # level: DEBUG
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "your key"
+
+ota:
+
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  manual_ip:
+    # Set this to the IP of the ESP
+    static_ip: 192.168.1.xxx
+    # Set this to the IP address of the router. Often ends with .1
+    gateway: 192.168.1.1
+    # The subnet of the network. 255.255.255.0 works for most home networks.
+    subnet: 255.255.255.0
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "your backup ssid"
+    password: "your backup password"
+
+captive_portal:
+
+#define variables
+globals:
+  - id: workmode_var
+    type: int
+    initial_value: '0' # normal mode
+  - id: batt_min_capacity_var
+    type: int
+    initial_value: '10' # 10%
+  - id: VPP_timer_var
+    type: int
+    initial_value: '0' # 0 sec
+  - id: VPP_timer_enable_var
+    type: int
+    initial_value: "0" # 0 = disable
+  - id: Power_Ref_Selector_var
+    type: uint
+    initial_value: "0" # 0
+  - id: VPP_timer_selector_var
+    type: int
+    initial_value: '0'
+  - id: max_feedin_selector_var
+    type: int
+    initial_value: '0' # 0 
+
+uart:
+    id: rs485_uart
+    tx_pin: GPIO17
+    rx_pin: GPIO16
+    baud_rate: 115200
+    stop_bits: 1
+
+modbus:
+    uart_id: rs485_uart
+    id: modbus1
+
+modbus_controller:
+    id: modbus_bms
+    address: 0x1 # the Modbus device address of the BMS
+    modbus_id: modbus1
+    update_interval: 2s
+
+button:
+  - platform: template
+    name: change modus
+    id: change_modus
+    icon: mdi:cog-refresh-outline
+    on_press:
+      - logger.log: "set modus on button pressed"
+      - output.turn_on: workmode_modbus_output
+      - output.turn_on: VPP_timer_modbus_output
+      - output.turn_on: batt_min_capacity_modbus_output
+      - output.turn_on: Power_Ref_Selector_modbus_output
+      - output.turn_on: VPP_timer_selector_modbus_output
+      - output.turn_on: max_feedin_selector_modbus_output
+
+
+sensor:
+  - platform: modbus_controller
+    modbus_controller_id: modbus_bms
+    name: "PV power"
+    id: pv_power_sensor
+    icon: mdi:solar-power-variant-outline
+    register_type: read
+    address: 36112
+    unit_of_measurement: "W"
+
+  - platform: modbus_controller
+    modbus_controller_id: modbus_bms
+    name: "SOC"
+    id: batt_scoc_sensor
+    icon: mdi:battery-charging-medium
+    register_type: read
+    address: 36155
+    unit_of_measurement: "%"
+    skip_updates: 10 
+
+  - platform: modbus_controller
+    modbus_controller_id: modbus_bms
+    name: "Grid power"
+    id: grid_power_sensor
+    icon: mdi:transmission-tower
+    register_type: read
+    address: 36131
+    unit_of_measurement: "W"
+    register_count: 2
+    value_type: S_DWORD
+
+  - platform: modbus_controller
+    modbus_controller_id: modbus_bms
+    name: "DSP power"
+    id: dsp_power_sensor
+    icon: mdi:home-lightning-bolt-outline
+    register_type: read
+    address: 36138
+    unit_of_measurement: "W"
+    register_count: 2
+    value_type: S_DWORD
+    on_value:
+      - sensor.template.publish:
+          id: home_power_sensor
+          state: !lambda 'return (id(pv_power_sensor).state + id(dsp_power_sensor).state + id(grid_power_sensor).state);' # calculate Home Power
+
+    
+  - platform: template
+    name: "Home power"
+    id: home_power_sensor
+    icon: mdi:home-lightning-bolt-outline
+    unit_of_measurement: "W"
+    accuracy_decimals: 0
+
+  - platform: modbus_controller
+    modbus_controller_id: modbus_bms
+    id: Max_feedin_limit
+    icon: mdi:transmission-tower
+    register_type: holding
+    address: 60003
+    unit_of_measurement: "%"
+    name: "Max Feedin limit"
+    value_type: U_WORD
+    accuracy_decimals: 0
+
+  - platform: modbus_controller
+    modbus_controller_id: modbus_bms
+    id: Power_ref
+    icon: mdi:battery-outline
+    register_type: holding
+    address: 60004
+    unit_of_measurement: "W"
+    name: "Power ref"
+    value_type: S_WORD
+    accuracy_decimals: 0
+
+  - platform: modbus_controller
+    modbus_controller_id: modbus_bms
+    id: Power_ref_inv_limit
+    icon: mdi:battery-outline
+    register_type: holding
+    address: 60005
+    unit_of_measurement: "W"
+    name: "Power ref inv limit"
+    value_type: S_WORD
+    accuracy_decimals: 0
+
+  - platform: modbus_controller
+    modbus_controller_id: modbus_bms
+    id: VPP_timer_read
+    icon: mdi:timer-outline
+    register_type: holding
+    address: 60007
+    unit_of_measurement: "sec"
+    name: "VPP timer"
+    value_type: U_WORD
+    accuracy_decimals: 0
+
+  - platform: modbus_controller
+    modbus_controller_id: modbus_bms
+    id: VPP_timer_enable
+    icon: mdi:timer-off-outline
+    register_type: holding
+    address: 60008
+    unit_of_measurement: "1=on"
+    name: "VPP timer enable"
+    value_type: U_WORD
+    accuracy_decimals: 0
+
+  - platform: modbus_controller
+    modbus_controller_id: modbus_bms
+    id: Batt_cap_min
+    icon: mdi:battery-minus-outline
+    register_type: holding
+    address: 60009
+    unit_of_measurement: "%"
+    name: "Battery min capacity"
+    value_type: U_WORD
+    accuracy_decimals: 0
+
+
+text_sensor:
+  - platform: modbus_controller
+    skip_updates: 60 
+    modbus_controller_id: modbus_bms
+    id: sn_text
+    icon: mdi:numeric
+    bitmask: 0
+    register_type: read
+    address: 36010
+    name: "Serial number inverter"
+    response_size: 18
+
+  - platform: modbus_controller
+    skip_updates: 60
+    modbus_controller_id: modbus_bms
+    id: DSP1_vers_text
+    icon: mdi:numeric
+    bitmask: 0
+    register_type: read
+    address: 36020
+    name: "DSP1 version"
+    response_size: 12
+
+  - platform: modbus_controller
+    skip_updates: 60
+    modbus_controller_id: modbus_bms
+    id: DSP2_vers_text
+    icon: mdi:numeric
+    bitmask: 0
+    register_type: read
+    address: 36028
+    name: "DSP2 version"
+    response_size: 12
+
+  - platform: modbus_controller
+    skip_updates: 60
+    modbus_controller_id: modbus_bms
+    id: EMS_vers_text
+    icon: mdi:numeric
+    bitmask: 0
+    register_type: read
+    address: 36036
+    name: "EMS version"
+    response_size: 12
+
+  - platform: modbus_controller
+    skip_updates: 60
+    modbus_controller_id: modbus_bms
+    id: BMS_vers_text
+    icon: mdi:numeric
+    bitmask: 0
+    register_type: read
+    address: 36044
+    name: "BMS version"
+    response_size: 12
+
+  - platform: modbus_controller
+    skip_updates: 2
+    modbus_controller_id: modbus_bms
+    id: Run_mode
+    icon: mdi:cog
+    register_type: read
+    address: 36101
+    register_count: 1
+    raw_encode: HEXBYTES
+    name: "Runmode"
+    response_size: 1
+
+  - platform: modbus_controller
+    skip_updates: 2
+    modbus_controller_id: modbus_bms
+    id: Work_mode
+    icon: mdi:cog
+    register_type: holding
+    address: 60001
+    register_count: 1
+    raw_encode: HEXBYTES
+    name: "Workmode"
+    response_size: 1
+
+
+output:
+  - platform: modbus_controller
+    modbus_controller_id: modbus_bms
+    id: workmode_modbus_output
+    register_type: holding  
+    write_lambda: |-
+      int workmode_var_value = id(workmode_var);
+      uint16_t value_to_send = 0;  // set default
+
+      if (workmode_var_value == 0) {
+        value_to_send = 0;
+      } else if (workmode_var_value == 1) {
+        value_to_send = 1;
+      } else if (workmode_var_value == 2) {
+        value_to_send = 2;
+      } else if (workmode_var_value == 3) {
+        value_to_send = 3;
+      }
+
+      return value_to_send;
+    address: 60001
+    value_type: U_WORD
+
+  - platform: modbus_controller
+    modbus_controller_id: modbus_bms
+    id: max_feedin_selector_modbus_output
+    register_type: holding
+    write_lambda: |-
+      int max_feedin_selector_var_value = id(max_feedin_selector_var);
+      uint16_t value_to_send = 10;  // Set default
+      value_to_send = max_feedin_selector_var_value;
+      return value_to_send;
+    address: 60003
+    value_type: U_WORD
+
+  - platform: modbus_controller
+    modbus_controller_id: modbus_bms
+    id: Power_Ref_Selector_modbus_output
+    register_type: holding
+    write_lambda: |-
+      uint Power_Ref_Selector_var_value = id(Power_Ref_Selector_var);
+      uint16_t value_to_send = 0;  // Set default
+      value_to_send = Power_Ref_Selector_var_value;
+      return value_to_send;
+    address: 60004
+    value_type: U_WORD
+
+
+  - platform: modbus_controller
+    modbus_controller_id: modbus_bms
+    id: VPP_timer_modbus_output
+    register_type: holding  
+    write_lambda: |-
+      int VPP_timer_var_value = id(VPP_timer_var);
+      uint16_t value_to_send = 0;  // Set default
+      value_to_send = VPP_timer_var_value;
+      return value_to_send;
+    address: 60007
+    value_type: U_WORD
+
+
+  - platform: modbus_controller
+    id: VPP_timer_selector_modbus_output
+    modbus_controller_id: modbus_bms
+    register_type: holding
+    write_lambda: |-
+      uint VPP_timer_selector_var_value = id(VPP_timer_selector_var);
+      uint16_t value_to_send = 0;  // Set default
+      value_to_send = VPP_timer_selector_var_value;
+      return value_to_send;
+    address: 60008
+    value_type: U_WORD
+
+  - platform: modbus_controller
+    modbus_controller_id: modbus_bms
+    id: batt_min_capacity_modbus_output
+    register_type: holding  
+    write_lambda: |-
+      int batt_min_capacity_var_value = id(batt_min_capacity_var);
+      uint16_t value_to_send = 10;  // Set default
+      value_to_send = batt_min_capacity_var_value;
+      return value_to_send;
+    address: 60009
+    value_type: U_WORD
+
+
+
+
+select:
+  - platform: template
+    name: "Workmode Selector"
+    id: workmode
+    optimistic: true
+    options: 
+      - "normal mode"
+      - "selfconsumption or forced charge/discharge"  #selfconsumptionn or forced charge/discharge
+      - "charge only on PV" #for 60001=2, that is VPP mode4 in the API document, the function is charge only, means when there is PV production, the battery will charge, but when there is no PV production, the battery will not discharge to support the home load. 
+      #The energy is stored always, in case that you predict that there will be high electricity price in the coming hours, you save the energy to be used by then
+      - "discharge only" #for 60001=3, that is VPP mode 5 in the API document, the function is discharge only, means when there is PV production, the battery will not charge neither, and when there is no PV production, the battery will discharge .
+      #This mode is to leave the capacity of the battery to charge when there is say minus price.
+    initial_option: "normal mode"  # Set initial value
+    on_value:
+      then:
+        - lambda: |-
+            // ESP_LOGD("Modbus Sensor Lambda","select mode" );
+            if (id(workmode).state == "normal mode") {
+            id(workmode_var) = 0;
+            } else if (id(workmode).state == "selfconsumption or forced charge/discharge") {
+              id(workmode_var) = 1;
+            } else if (id(workmode).state == "charge on PV only") {
+              id(workmode_var) = 2;
+            } else if (id(workmode).state == "discharge only") {
+              id(workmode_var) = 3;
+            }
+
+  - platform: template
+    name: "Batt Min Capacity Selector"
+    id: batt_min_capacity
+    optimistic: true
+    options: 
+      - "10%"
+      - "20%"
+      - "30%"
+      - "40%"
+      - "50%"
+      - "60%"
+      - "70%"
+      - "80%"
+      - "90%"
+      - "100%"
+    initial_option: "10%"  # Set initial value
+    on_value:
+     then:
+        - lambda: |-
+            if (id(batt_min_capacity).state == "10%") {
+              id(batt_min_capacity_var) = 10;
+            } else if (id(batt_min_capacity).state == "20%") {
+              id(batt_min_capacity_var) = 20;
+            } else if (id(batt_min_capacity).state == "30%") {
+             id(batt_min_capacity_var) = 30;
+            } else if (id(batt_min_capacity).state == "40%") {
+              id(batt_min_capacity_var) = 40;
+            } else if (id(batt_min_capacity).state == "50%") {
+              id(batt_min_capacity_var) = 50;
+            } else if (id(batt_min_capacity).state == "60%") {
+              id(batt_min_capacity_var) = 60;
+            } else if (id(batt_min_capacity).state == "70%") {
+              id(batt_min_capacity_var) = 70;
+            } else if (id(batt_min_capacity).state == "80%") {
+              id(batt_min_capacity_var) = 80;
+            } else if (id(batt_min_capacity).state == "90%") {
+              id(batt_min_capacity_var) = 90;
+            } else if (id(batt_min_capacity).state == "100%") {
+              id(batt_min_capacity_var) = 100;
+            }
+
+  - platform: template
+    name: "Max Feedin Selector"
+    id: max_feedin_selector
+    optimistic: true
+    options: 
+      - "10%"
+      - "20%"
+      - "30%"
+      - "40%"
+      - "50%"
+      - "60%"
+      - "70%"
+      - "80%"
+      - "90%"
+      - "100%"
+    initial_option: "100%"  # Set initial value
+    on_value:
+     then:
+        - lambda: |-
+            if (id(max_feedin_selector).state == "10%") {
+              id(max_feedin_selector_var) = 10;
+            } else if (id(max_feedin_selector).state == "20%") {
+              id(max_feedin_selector_var) = 20;
+            } else if (id(max_feedin_selector).state == "30%") {
+             id(max_feedin_selector_var) = 30;
+            } else if (id(max_feedin_selector).state == "40%") {
+              id(max_feedin_selector_var) = 40;
+            } else if (id(max_feedin_selector).state == "50%") {
+              id(max_feedin_selector_var) = 50;
+            } else if (id(max_feedin_selector).state == "60%") {
+              id(max_feedin_selector_var) = 60;
+            } else if (id(max_feedin_selector).state == "70%") {
+              id(max_feedin_selector_var) = 70;
+            } else if (id(max_feedin_selector).state == "80%") {
+              id(max_feedin_selector_var) = 80;
+            } else if (id(max_feedin_selector).state == "90%") {
+              id(max_feedin_selector_var) = 90;
+            } else if (id(max_feedin_selector).state == "100%") {
+              id(max_feedin_selector_var) = 100;
+            }
+
+
+  - platform: template
+    name: "VPP Time Selector"
+    id: VPP_timer
+    optimistic: true
+    options: 
+      - "30 sec"
+      - "5 min"
+      - "30 min"
+      - "1 hour"
+    initial_option: "30 sec"  # Set initial value
+    on_value:
+      then:
+        - lambda: |-
+            // ESP_LOGD("Modbus Sensor Lambda","select mode" );
+            if (id(VPP_timer).state == "30 sec") {
+            id(VPP_timer_var) = 30;
+            } else if (id(VPP_timer).state == "5 min") {
+              id(VPP_timer_var) = 300;
+            } else if (id(VPP_timer).state == "30 min") {
+              id(VPP_timer_var) = 1800;
+            } else if (id(VPP_timer).state == "1 hour") {
+              id(VPP_timer_var) = 3600;
+            }
+
+
+  - platform: template
+    name: "VPP timer on/off"
+    id: VPP_timer_selector
+    optimistic: True
+    options:
+      - "VPP timer on"
+      - "VPP timer off"
+    initial_option: "VPP timer off"  # Set initial value
+    on_value:
+      then:
+        - lambda: |-
+            if (id(VPP_timer_selector).state == "VPP timer on") {
+              id(VPP_timer_selector_var) = 1;
+            } else if (id(VPP_timer_selector).state == "VPP timer off") {
+              id(VPP_timer_selector_var) = 0;
+            }
+        
+  - platform: template
+    name: "power ref selector"
+    id: Power_Ref_Selector
+    optimistic: True
+    options: 
+      - "5kW charge"
+      - "4kW charge"
+      - "3kW charge"
+      - "2kW charge"
+      - "1kW charge"
+      - "0"
+      - "1kW discharge"
+      - "2kW discharge"
+      - "3kW discharge"
+      - "4kW discharge"
+      - "5kW discharge"
+    initial_option: "0"  # Set initial value
+    on_value:
+      then:
+        - lambda: |-
+            if (id(Power_Ref_Selector).state == "5kW charge") {
+              id(Power_Ref_Selector_var) = -5000;
+            } else if (id(Power_Ref_Selector).state == "4kW charge") {
+              id(Power_Ref_Selector_var) = -4000;
+            } else if (id(Power_Ref_Selector).state == "3kW charge") {
+              id(Power_Ref_Selector_var) = -3000;
+            } else if (id(Power_Ref_Selector).state == "2kW charge") {
+              id(Power_Ref_Selector_var) = -2000;
+            } else if (id(Power_Ref_Selector).state == "1kW charge") {
+              id(Power_Ref_Selector_var) = -1000;
+            } else if (id(Power_Ref_Selector).state == "0") {
+              id(Power_Ref_Selector_var) = 0;
+            } else if (id(Power_Ref_Selector).state == "1kW discharge") {
+              id(Power_Ref_Selector_var) = 1000;
+            } else if (id(Power_Ref_Selector).state == "2kW discharge") {
+              id(Power_Ref_Selector_var) = 2000;
+            } else if (id(Power_Ref_Selector).state == "3kW discharge") {
+              id(Power_Ref_Selector_var) = 3000;
+            } else if (id(Power_Ref_Selector).state == "4kW discharge") {
+              id(Power_Ref_Selector_var) = 4000;
+            } else if (id(Power_Ref_Selector).state == "5kW discharge") {
+              id(Power_Ref_Selector_var) = 5000;
+            }
