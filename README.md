@@ -28,3 +28,13 @@ Edit yaml on ESP32
  # Hardware setup
  
  ![setup](https://github.com/driesk81/home-assistant-modbus-home-battery-ecactus/assets/55897352/e2315b8a-ed8a-4822-b793-5e4281028a97)
+
+ # Home assitant dashboard
+ 
+ ![image](https://github.com/driesk81/home-assistant-modbus-home-battery-ecactus/assets/55897352/f6e18c19-a5ad-4ab8-90bd-63130ec8150a)
+ ![image](https://github.com/driesk81/home-assistant-modbus-home-battery-ecactus/assets/55897352/095d6154-8d5e-41a0-9567-0aa620a13c8f)
+ ![image](https://github.com/driesk81/home-assistant-modbus-home-battery-ecactus/assets/55897352/66d4971d-150e-4464-8f51-d36f7d1ae5d8)
+
+
+
+ 
