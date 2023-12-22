@@ -10,7 +10,7 @@ use at your own risk.
 * This code is tested on a esp32 connected to a TTL to RS485 converter. 
 * BMS settings can be selected via list options and are pushed when [change modus] button is pressed.
 * Known issue:  Component modbus_controller took a long time for an operation (0.05 s) and Components should block for at most 20-30ms i seen no effect or solution.
-Please be kind this is the first yaml i have ever written :-)
+* Please be kind this is the first yaml i have ever written :-)
 
 hardware used:
    * ESP32
